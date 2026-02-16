@@ -1627,6 +1627,14 @@ export const power = jit(function power(x1: Array, x2: Array) {
 
 export { power as pow };
 
+/**
+ * @function
+ * Calculate element-wise reciprocal of the square root of the input.
+ */
+export const rsqrt = jit(function rsqrt(x: Array): Array {
+  return reciprocal(sqrt(x));
+});
+
 /** @function Calculate the element-wise cube root of the input array. */
 export const cbrt = jit(function cbrt(x: Array) {
   // This isn't just power(x, 1/3) since we need to handle negative numbers.

@@ -67,6 +67,16 @@ export function parse(data: Uint8Array<ArrayBuffer> | ArrayBuffer): File {
     throw new Error(`Failed to parse safetensors header as JSON: ${error}`);
   }
 
+  // Slice the data section into its own ArrayBuffer so that data_offsets
+  // (which are relative to the data section start) are used directly from
+  // offset 0. This avoids alignment issues when the header size is not a
+  // multiple of 4/8 bytes.
+  const dataBase = ptr + Number(headerSize) + 8;
+  const body = buffer.slice(
+    dataBase,
+    dataBase + (len - Number(headerSize) - 8),
+  );
+
   const file: File = { tensors: {}, totalSize: len };
   for (const [key, value] of Object.entries(header)) {
     if (key === "__metadata__") {
@@ -78,45 +88,45 @@ export function parse(data: Uint8Array<ArrayBuffer> | ArrayBuffer): File {
       shape: number[];
       data_offsets: [number, number];
     };
-    const byteOffset = ptr + Number(headerSize) + 8 + data_offsets[0];
+    const byteOffset = data_offsets[0];
     const byteLength = data_offsets[1] - data_offsets[0];
     let data: TensorData;
     switch (dtype) {
       case "F16":
-        data = new Float16Array(buffer, byteOffset, byteLength / 2);
+        data = new Float16Array(body, byteOffset, byteLength / 2);
         break;
       case "F32":
-        data = new Float32Array(buffer, byteOffset, byteLength / 4);
+        data = new Float32Array(body, byteOffset, byteLength / 4);
         break;
       case "F64":
-        data = new Float64Array(buffer, byteOffset, byteLength / 8);
+        data = new Float64Array(body, byteOffset, byteLength / 8);
         break;
       case "I8":
-        data = new Int8Array(buffer, byteOffset, byteLength);
+        data = new Int8Array(body, byteOffset, byteLength);
         break;
       case "I16":
-        data = new Int16Array(buffer, byteOffset, byteLength / 2);
+        data = new Int16Array(body, byteOffset, byteLength / 2);
         break;
       case "I32":
-        data = new Int32Array(buffer, byteOffset, byteLength / 4);
+        data = new Int32Array(body, byteOffset, byteLength / 4);
         break;
       case "I64":
-        data = new BigInt64Array(buffer, byteOffset, byteLength / 8);
+        data = new BigInt64Array(body, byteOffset, byteLength / 8);
         break;
       case "U8":
-        data = new Uint8Array(buffer, byteOffset, byteLength);
+        data = new Uint8Array(body, byteOffset, byteLength);
         break;
       case "U16":
-        data = new Uint16Array(buffer, byteOffset, byteLength / 2);
+        data = new Uint16Array(body, byteOffset, byteLength / 2);
         break;
       case "U32":
-        data = new Uint32Array(buffer, byteOffset, byteLength / 4);
+        data = new Uint32Array(body, byteOffset, byteLength / 4);
         break;
       case "U64":
-        data = new BigUint64Array(buffer, byteOffset, byteLength / 8);
+        data = new BigUint64Array(body, byteOffset, byteLength / 8);
         break;
       case "BOOL":
-        data = new Uint8Array(buffer, byteOffset, byteLength);
+        data = new Uint8Array(body, byteOffset, byteLength);
         break;
       default:
         throw new Error(`Unsupported dtype: ${dtype}`);
